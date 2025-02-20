@@ -98,7 +98,7 @@
             document.getElementById('userMessage').value = '';
 
             try {
-                const response = await fetch(`${apiBaseUrl}/query_with_translation`, {
+                const response = await fetch(`${apiBaseUrl}/query_with_translation_v2`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
