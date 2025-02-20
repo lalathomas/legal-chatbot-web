@@ -105,7 +105,7 @@
         const apiBaseUrl = 'https://hkmufyp.onrender.com';
         let currentLanguage = 'ur-PK'; // Default language is Urdu
         let recognition; // Global recognition variable
-
+        let currentAudio = null;   
         // Change language dynamically
         document.getElementById('languageDropdown').addEventListener('change', (event) => {
             currentLanguage = event.target.value;
@@ -177,7 +177,7 @@
 
             messageElement.innerHTML = `
                 <span class="bubble">${message}</span><br>
-                <button class="btn btn-sm btn-secondary mt-2" onclick="textToSpeech('${message}', '${language}')">🔊 Play</button>
+                <button class="btn btn-sm btn-secondary mt-2" onclick="textToSpeech('${message}', '${language}', this)">🔊 Play</button>
                 ${laws.length > 0 ? `<button class="btn btn-sm btn-info mt-2" onclick="toggleLawDetails(this)">📄 Show Details</button>` : ''}
                 <button class="btn btn-sm btn-warning mt-2" onclick="toggleChineseResult(this)">🌐 Show Chinese Result</button>
                 <div class="chinese-result" style="display:none; margin-top:5px; background-color:#f8f9fa; padding:10px; border-radius:8px;">
@@ -302,8 +302,18 @@
         }
 
         // Text-to-Speech function
-        async function textToSpeech(text, language) {
+        async function textToSpeech(text, language, button) {
             try {
+                // If an audio is already playing, stop it
+                if (currentAudio && !currentAudio.paused) {
+                    currentAudio.pause();
+                    currentAudio.currentTime = 0;
+                    button.textContent = '🔊 Play'; // Reset button text
+                    currentAudio = null;
+                    return;
+                }
+    
+                // Fetch TTS audio from API
                 const response = await fetch(`${apiBaseUrl}/text_to_speech`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -312,21 +322,36 @@
                         language: language
                     })
                 });
-
+    
                 if (!response.ok) {
                     throw new Error('Failed to process text-to-speech.');
                 }
-
+    
                 const data = await response.json();
                 const audioContent = data.audio_content;
-
-                const audio = new Audio(`data:audio/mp3;base64,${audioContent}`);
-                audio.play();
+    
+                // Play the new audio
+                currentAudio = new Audio(`data:audio/mp3;base64,${audioContent}`);
+                currentAudio.play();
+    
+                // Change button text to "Stop"
+                button.textContent = '⏹ Stop';
+    
+                // When audio ends, reset button text
+                currentAudio.onended = () => {
+                    button.textContent = '🔊 Play';
+                    currentAudio = null;
+                };
+    
             } catch (error) {
                 console.error('Text-to-Speech error:', error);
             }
+        
         }
     </script>
+</body>
+
+</html>
 </body>
 
 </html>
