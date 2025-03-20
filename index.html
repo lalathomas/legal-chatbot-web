@@ -85,6 +85,11 @@
         <div id="chatBox" class="mb-3"></div>
 
         <!-- Message Input -->
+        <div class="d-flex justify-content-center mb-3">
+            <button class="btn btn-success me-2" onclick="sendMessage('v2')">Run V2 API</button>
+            <button class="btn btn-primary" onclick="sendMessage('gemini')">Run Gemini API</button>
+        </div>
+        
         <div class="input-group mb-3">
             <input type="text" id="userMessage" class="form-control" placeholder="Type your message">
             <button class="btn btn-primary" onclick="sendMessage()">Send</button>
@@ -112,15 +117,17 @@
         });
 
         // Send a message
-        async function sendMessage() {
+        async function sendMessage(apiType = 'v2') {
             const userMessage = document.getElementById('userMessage').value.trim();
             if (!userMessage) return;
-
-            addMessageToChat(userMessage, 'user-message');
+        
+            addMessageToChat(`User (${apiType.toUpperCase()}): ${userMessage}`, 'user-message');
             document.getElementById('userMessage').value = '';
-
+        
+            const endpoint = apiType === 'gemini' ? '/query_with_translation_gemini' : '/query_with_translation_v2';
+        
             try {
-                const response = await fetch(`${apiBaseUrl}/query_with_translation_v2`, {
+                const response = await fetch(`${apiBaseUrl}${endpoint}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -128,24 +135,22 @@
                         original_language: currentLanguage
                     })
                 });
-
-                if (!response.ok) {
-                    throw new Error('Failed to process the request.');
-                }
-
+        
+                if (!response.ok) throw new Error('Failed to process the request.');
+        
                 const data = await response.json();
                 const assistantMessage = data.response_in_original_language || 'Sorry, I couldn’t process your request.';
                 const retrievedLaws = data.retrieved_laws || [];
                 const chineseResponse = data.response_in_chinese || 'No Chinese response available.';
-
-                addAssistantMessage(assistantMessage, retrievedLaws, currentLanguage, chineseResponse);
-
+        
+                addAssistantMessage(`(${apiType.toUpperCase()}) ${assistantMessage}`, retrievedLaws, currentLanguage, chineseResponse);
+        
             } catch (error) {
-                addMessageToChat('Sorry, I couldn’t process your request.', 'assistant-message');
                 console.error(error);
+                addMessageToChat(`Error from ${apiType} API.`, 'assistant-message');
             }
         }
-
+        
         // Add user or assistant message to chat
         function addMessageToChat(message, type) {
             const chatBox = document.getElementById('chatBox');
