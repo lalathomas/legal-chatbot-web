@@ -124,7 +124,7 @@
             addMessageToChat(`User (${apiType.toUpperCase()}): ${userMessage}`, 'user-message');
             document.getElementById('userMessage').value = '';
         
-            const endpoint = apiType === 'gemini' ? '/query_with_translation_gemini' : '/query_with_translation_v2';
+            const endpoint = apiType === 'gemini' ? '/query_with_translation_gemini_v2' : '/query_with_translation_v2';
         
             try {
                 const response = await fetch(`${apiBaseUrl}${endpoint}`, {
