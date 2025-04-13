@@ -97,7 +97,7 @@
 
         <!-- Voice Input and File Upload -->
         <div class="d-flex justify-content-between">
-            <button id="recordButton" class="btn btn-info">🎤 Hold to Speak</button>
+            <<button id="recordButton" class="btn btn-info">🎤 Hold to Speak</button>
             <input type="file" id="audioFile" class="form-control" accept=".mp3, .flac">
             <button class="btn btn-secondary" onclick="uploadAudio()">Upload Voice</button>
         </div>
@@ -110,11 +110,15 @@
         const apiBaseUrl = 'https://hkmufyp.onrender.com';
         let currentLanguage = 'ur-PK'; // Default language is Urdu
         let recognition; // Global recognition variable
-        let currentAudio = null;   
-        // Change language dynamically
+        
+        let mediaRecorder;
+        let audioChunks = [];
+
         document.getElementById('languageDropdown').addEventListener('change', (event) => {
-            currentLanguage = event.target.value;
-        });
+        currentLanguage = event.target.value;
+    });
+
+        const recordButton = document.getElementById('recordButton');
 
         // Send a message
         async function sendMessage(apiType = 'v2') {
@@ -221,51 +225,58 @@
             button.textContent = isVisible ? '🌐 Show Chinese Result' : '🌐 Hide Chinese Result';
         }
 
-        // ✅ Start Voice Input on Hold and Stop on Release
-        function initializeVoiceInput() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+       
+        
 
-            if (!SpeechRecognition) {
-                alert("Sorry, your browser does not support Speech Recognition. Try using Google Chrome.");
-                return;
-            }
-
-            recognition = new SpeechRecognition();
-            recognition.lang = currentLanguage;
-            recognition.interimResults = false;
-            recognition.maxAlternatives = 1;
-
-            const recordButton = document.getElementById('recordButton');
-
-            // Start recording on mousedown
-            recordButton.addEventListener('mousedown', () => {
-                recognition.start();
+        recordButton.addEventListener('mousedown', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+    
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+    
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const formData = new FormData();
+                    formData.append('audio', audioBlob, 'recording.webm');
+                    formData.append('language', currentLanguage);
+    
+                    try {
+                        const response = await fetch(`${apiBaseUrl}/speech_to_text`, {
+                            method: 'POST',
+                            body: formData
+                        });
+    
+                        const data = await response.json();
+                        const transcript = data.transcript || '❌ No speech recognized.';
+                        document.getElementById('userMessage').value = transcript;
+                    } catch (err) {
+                        console.error('Upload error:', err);
+                        alert('❌ Failed to process the audio.');
+                    }
+                };
+    
+                mediaRecorder.start();
                 recordButton.classList.add('recording');
                 recordButton.innerText = '🎤 Recording...';
-                console.log("Voice recording started...");
-            });
-
-            // Stop recording on mouseup
-            recordButton.addEventListener('mouseup', () => {
-                recognition.stop();
+            } catch (err) {
+                alert("🎙️ Unable to access microphone.");
+                console.error(err);
+            }
+        });
+    
+        recordButton.addEventListener('mouseup', () => {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
                 recordButton.classList.remove('recording');
                 recordButton.innerText = '🎤 Hold to Speak';
-                console.log("Voice recording stopped.");
-            });
-
-            // Handle speech results
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                console.log("Voice Input:", transcript);
-                document.getElementById('userMessage').value = transcript;
-            };
-
-            // Handle errors
-            recognition.onerror = (event) => {
-                console.error("Speech recognition error:", event.error);
-                alert("Error occurred during speech recognition: " + event.error);
-            };
-        }
+            }
+        });
 
         // Initialize voice input on page load
         window.onload = initializeVoiceInput;
